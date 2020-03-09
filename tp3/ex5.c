@@ -13,11 +13,12 @@ int main()
     if (pid == -1) // error
         perror("First fork");
     else if (pid == 0) // child
-        write(STDOUT_FILENO, "Hello ", 6); // happens first because fork takes some time
+        write(STDOUT_FILENO, "Hello ", 6); // Runs first because of a second fork afterwards in the pparent
     else
     { // parent
-        wait(&status); // in case something goes wrong
+        wait(&status);
 
+        // in case something goes wrong
         if (status == -1) {
             perror("Waiting for first fork error");
             return 1;
