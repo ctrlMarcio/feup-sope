@@ -23,6 +23,8 @@ int main(int argc, char *argv[])
     if (pid == 0)
     {
         execv(argv[2], &argv[2]);
+        printf("Error executing %s", argv[2]);
+        exit(1);
     }
     else
     {
@@ -30,7 +32,6 @@ int main(int argc, char *argv[])
         action.sa_handler = alarmHandler;
         action.sa_flags = 0;
         sigfillset(&action.sa_mask);
-        sigdelset(&action.sa_mask, SIGALRM);
 
         sigaction(SIGALRM, &action, NULL);
 
