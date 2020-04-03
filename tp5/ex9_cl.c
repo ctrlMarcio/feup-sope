@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #define MAXPATH 100
+#define MAXSIZE 1000
 #define BASE_CLIENT "/tmp/fifo"
 #define FIFO "/tmp/fifo.s"
 
@@ -22,7 +23,6 @@ int main(int argc, char **argv)
     mkfifo(path, 0777);
 
     int svfd = open(FIFO, O_WRONLY);
-    int ownfd = open(path, O_RDONLY | O_NONBLOCK);
 
     char cmd[MAXPATH] = "";
     sprintf(cmd, "%d", pid);
@@ -32,11 +32,11 @@ int main(int argc, char **argv)
         strcat(cmd, " ");
         strcat(cmd, argv[i]);
     }
-
     write(svfd, cmd, MAXPATH);
 
-    char output[1000];
-    read(ownfd, output, 1000);
+    int ownfd = open(path, O_RDONLY);
+    char output[MAXSIZE] = "";
+    read(ownfd, output, MAXSIZE);
     printf("%s\n", output);
 
     exit(0);

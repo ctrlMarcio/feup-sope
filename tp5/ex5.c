@@ -1,14 +1,16 @@
 /**
- * NOT WORKING, WILL CHECK LATER
+ * NOT WORKING, DO NOT TRY THIS AT HOME
  */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #define MAX 100
 #define MAXCMDS 10
+#define OUTMAX 4096
 #define DELIMITOR "|"
 #define READ 0
 #define WRITE 1
@@ -41,6 +43,55 @@ int main()
     runcmds(vcmd, size, 0, oldfd);
 
     exit(0);
+}
+
+void runcmds(char **cmds, int size, int i, int fd[])
+{
+    if (i >= size)
+    {
+        char tmp[OUTMAX];
+        read(fd[READ], tmp, OUTMAX);
+        printf("%s\n", tmp);
+        return;
+    }
+
+    int newfd[2];
+    if (pipe(newfd)) // error
+    {
+        perror("pipe");
+        exit(1);
+    }
+
+    pid_t pid;
+    if ((pid = fork()) < 0) // error
+    {
+        perror("fork");
+        exit(2);
+    }
+    else if (pid > 0) // parent
+    {
+        wait(NULL);
+
+        char tmp[OUTMAX];
+        read(newfd[READ], tmp, OUTMAX);
+        printf("%s\n", tmp);
+        write(fd[WRITE], tmp, OUTMAX);
+
+        runcmds(cmds, size, ++i, fd);
+    }
+    else // child
+    {
+        char *singlecmd[MAXCMDS];
+        int size = split(cmds[i], " ", singlecmd);
+        singlecmd[size] = NULL;
+
+        dup2(newfd[WRITE], STDOUT_FILENO);
+        dup2(fd[READ], STDIN_FILENO);
+
+        execvp(singlecmd[0], singlecmd);
+        perror(singlecmd[0]);
+        exit(3);
+    }
 }
 
 int split(char *src, char *delimitor, char *dest[])
@@ -85,50 +136,4 @@ int trim_string(char *out, const char *str)
     out[out_size] = 0;
 
     return out_size;
-}
-
-void runcmds(char **cmds, int size, int i, int fd[])
-{
-    if (i == size) {
-        dup2(STDOUT_FILENO, fd[WRITE]);
-        return;
-    }
-
-    dup2(fd[READ], STDIN_FILENO);
-
-    pid_t pid;
-    if ((pid = fork()) < 0) // error
-    {
-        perror("fork");
-        exit(2);
-    }
-    else if (pid > 0) // parent
-    {
-        close(fd[READ]);
-
-        char *singlecmd[MAXCMDS];
-        split(cmds[i], " ", singlecmd);
-
-        dup2(fd[WRITE], STDOUT_FILENO);
-
-        execvp(singlecmd[0], singlecmd);
-        perror(singlecmd[0]);
-        exit(3);
-    }
-    else // child
-    {
-        close(fd[WRITE]);
-
-        int newfd[2];
-
-        if (pipe(newfd)) // error
-        {
-            perror("pipe");
-            exit(1);
-        }
-
-        close(newfd[READ]);
-
-        runcmds(cmds, size, i++, newfd);
-    }
 }
